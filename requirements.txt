@@ -1,3 +1,14 @@
+https://github.com/KurimuzonAkuma/pyrogram/archive/dev.zip
+tgcrypto
+uvicorn
+fastapi[all]
+python-dotenv
+aiofiles
+aiohttp
+curl_cffi
+techzdl>=1.2.6
+tqdm
+dill
 pyrogram>=2.0.106 # Using the latest stable Pyrogram 2.x from PyPI
 tgcrypto
 uvicorn
