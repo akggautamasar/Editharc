@@ -1,12 +1,12 @@
 import asyncio
-import json # Added import for JSON persistence
+import json
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import config
 from utils.logger import Logger
 from pathlib import Path
 
-logger = Logger(__name__)
+logger = Logger(f"{__name__}") # Fixed logger initialization to avoid potential issues
 
 START_CMD = """🚀 **Welcome To TG Drive's Bot Mode**
 
@@ -23,13 +23,11 @@ Read more about [TG Drive's Bot Mode](https://github.com/TechShreyash/TGDrive#tg
 
 SET_FOLDER_PATH_CACHE = {}
 DRIVE_DATA = None
-BOT_MODE = None # This BOT_MODE object is assumed to have .set_folder, .current_folder, .current_folder_name attributes
+BOT_MODE = None 
 
 session_cache_path = Path(f"./cache")
 session_cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-# Define the path for the default folder configuration file
-# This file will store the path and name of the last set default folder.
 DEFAULT_FOLDER_CONFIG_FILE = Path("./default_folder_config.json")
 
 main_bot = Client(
@@ -64,17 +62,20 @@ async def set_folder_handler(client: Client, message: Message):
     Handles the /set_folder command.
     Prompts the user for a folder name, searches for it, and presents a list
     of found folders for selection via inline buttons.
+    Uses client.ask() for compatibility with older Pyrogram versions.
     """
     global SET_FOLDER_PATH_CACHE, DRIVE_DATA
 
     while True:
         try:
-            # Ask the user for the folder name
-            folder_name_input = await message.ask(
-                "Send the folder name where you want to upload files\n\n/cancel to cancel",
+            # --- MODIFICATION HERE: Using client.ask() instead of message.ask() ---
+            folder_name_input = await client.ask(
+                chat_id=message.chat.id, # Specify the chat ID
+                text="Send the folder name where you want to upload files\n\n/cancel to cancel",
                 timeout=60, # Timeout for user response
                 filters=filters.text,
             )
+            # --- END MODIFICATION ---
         except asyncio.TimeoutError:
             await message.reply_text("Timeout\n\nUse /set_folder to set folder again")
             return
@@ -85,11 +86,9 @@ async def set_folder_handler(client: Client, message: Message):
             return
 
         folder_name = folder_name_input.text.strip()
-        # Search for the folder using DRIVE_DATA (assumed to be a backend interface)
         search_result = DRIVE_DATA.search_file_folder(folder_name)
 
         folders = {}
-        # Filter out only actual folders from the search result
         for item in search_result.values():
             if item.type == "folder":
                 folders[item.id] = item
@@ -97,18 +96,14 @@ async def set_folder_handler(client: Client, message: Message):
         if len(folders) == 0:
             await message.reply_text(f"No Folder found with name '{folder_name}'")
         else:
-            # If folders are found, break the loop to proceed with selection
             break
 
     buttons = []
     folder_cache = {}
-    # Generate a unique ID for this specific set of folder options
     folder_cache_id = len(SET_FOLDER_PATH_CACHE) + 1
 
-    # Create inline buttons for each found folder
     for folder in folders.values():
         path_segments = [seg for seg in folder.path.strip("/").split("/") if seg]
-        # Construct the full path. Handles root folders correctly.
         folder_path = "/" + ("/".join(path_segments + [folder.id]))
         
         folder_cache[folder.id] = (folder_path, folder.name)
@@ -138,7 +133,6 @@ async def set_folder_callback(client: Client, callback_query: Message):
     """
     global SET_FOLDER_PATH_CACHE, BOT_MODE
 
-    # Parse the callback data to get cache ID and folder ID
     folder_cache_id_str, folder_id = callback_query.data.split("_")[2:]
     folder_cache_id = int(folder_cache_id_str)
 
@@ -154,13 +148,10 @@ async def set_folder_callback(client: Client, callback_query: Message):
         await callback_query.message.delete()
         return
 
-    # Clean up the cache entry once used
     del SET_FOLDER_PATH_CACHE[folder_cache_id]
 
-    # Update the BOT_MODE's current folder
     BOT_MODE.set_folder(folder_path, name)
 
-    # --- Persist the selected folder to the configuration file ---
     try:
         with open(DEFAULT_FOLDER_CONFIG_FILE, "w") as f:
             json.dump({"current_folder": folder_path, "current_folder_name": name}, f)
@@ -185,7 +176,6 @@ async def current_folder_handler(client: Client, message: Message):
     """
     global BOT_MODE
 
-    # Display the current folder name from the BOT_MODE object
     await message.reply_text(f"Current Folder: {BOT_MODE.current_folder_name}")
 
 
@@ -207,14 +197,12 @@ async def file_handler(client: Client, message: Message):
     """
     global BOT_MODE, DRIVE_DATA
 
-    # Ensure BOT_MODE has a current folder set before attempting to upload
     if not BOT_MODE.current_folder:
         await message.reply_text(
             "Error: No default folder set. Please use /set_folder to set one before uploading files."
         )
         return
 
-    # Copy the message to the storage channel
     copied_message = await message.copy(config.STORAGE_CHANNEL)
     file = (
         copied_message.document
@@ -224,7 +212,6 @@ async def file_handler(client: Client, message: Message):
         or copied_message.sticker
     )
 
-    # Register the new file with DRIVE_DATA (assumed backend)
     DRIVE_DATA.new_file(
         BOT_MODE.current_folder,
         file.file_name,
@@ -253,11 +240,9 @@ async def start_bot_mode(d, b):
     logger.info("Starting Main Bot")
     await main_bot.start()
 
-    # --- Persistence Logic for Default Folder ---
     default_folder_path = None
     default_folder_name_to_use = None
 
-    # Attempt to load the default folder from the configuration file
     if DEFAULT_FOLDER_CONFIG_FILE.exists():
         try:
             with open(DEFAULT_FOLDER_CONFIG_FILE, "r") as f:
@@ -276,11 +261,9 @@ async def start_bot_mode(d, b):
             default_folder_name_to_use = None
 
     if default_folder_path and default_folder_name_to_use:
-        # Use the loaded default folder if found and valid
         BOT_MODE.set_folder(default_folder_path, default_folder_name_to_use)
         message_to_send = f"Main Bot Started -> TG Drive's Bot Mode Enabled with previously set folder: {default_folder_name_to_use}"
     else:
-        # Fallback to "grammar" if no saved config or error in loading
         hardcoded_default_folder_name = "grammar"
         search_result = DRIVE_DATA.search_file_folder(hardcoded_default_folder_name)
         found_grammar = False
@@ -291,7 +274,6 @@ async def start_bot_mode(d, b):
                 
                 BOT_MODE.set_folder(folder_path, item.name)
                 logger.info(f"Default folder set to: {item.name} -> {folder_path}")
-                # Save this initial default to the config file for future runs
                 try:
                     with open(DEFAULT_FOLDER_CONFIG_FILE, "w") as f:
                         json.dump({"current_folder": folder_path, "current_folder_name": item.name}, f)
@@ -302,7 +284,6 @@ async def start_bot_mode(d, b):
                 break
         if not found_grammar:
             logger.warning(f"No folder found with name '{hardcoded_default_folder_name}'. No default folder set initially.")
-            # Set BOT_MODE to an explicit "unset" state if no folder found
             BOT_MODE.set_folder(None, "No default folder set. Please use /set_folder.") 
             message_to_send = "Main Bot Started -> TG Drive's Bot Mode Enabled. No 'grammar' folder found, please use /set_folder to choose one."
 
@@ -314,5 +295,4 @@ async def start_bot_mode(d, b):
         message_to_send,
     )
     logger.info(message_to_send)
-    # --- End Persistence Logic ---
     
