@@ -1,5 +1,3 @@
-support)">
-```python
 import asyncio
 import json
 from pyrogram import Client, filters
@@ -428,4 +426,4 @@ async def start_bot_mode(d, b):
         message_to_send,
     )
     logger.info(message_to_send)
-```
+                
