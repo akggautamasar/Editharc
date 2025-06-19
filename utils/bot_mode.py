@@ -189,7 +189,7 @@ async def start_bot_mode(d, b):
     await main_bot.start()
 
     # Set default folder to "Airdrive"
-    default_folder_name = "english"
+    default_folder_name = "SuperchargeVocabulary"
     search_result = DRIVE_DATA.search_file_folder(default_folder_name)
 
     for item in search_result.values():
