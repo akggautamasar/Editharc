@@ -6,7 +6,7 @@ import config
 from utils.logger import Logger
 from pathlib import Path
 
-logger = Logger(f"{__name__}") # Fixed logger initialization to avoid potential issues
+logger = Logger(f"{__name__}")
 
 START_CMD = """🚀 **Welcome To TG Drive's Bot Mode**
 
@@ -39,6 +39,56 @@ main_bot = Client(
     workdir=session_cache_path,
 )
 
+# --- Manual 'ask' implementation setup ---
+# Stores {chat_id: (asyncio.Queue, asyncio.Event, pyrogram.filters)}
+_pending_requests = {}
+
+async def manual_ask(client: Client, chat_id: int, text: str, timeout: int = 60, filters=None) -> Message:
+    """
+    A manual implementation of the 'ask' functionality for older Pyrogram versions.
+    Sends a message and waits for a response from the specified chat_id.
+    """
+    queue = asyncio.Queue(1)
+    event = asyncio.Event()
+    
+    _pending_requests[chat_id] = (queue, event, filters)
+
+    await client.send_message(chat_id, text)
+
+    try:
+        await asyncio.wait_for(event.wait(), timeout=timeout)
+        response_message = await queue.get()
+        return response_message
+    except asyncio.TimeoutError:
+        raise asyncio.TimeoutError # Re-raise if timed out
+    finally:
+        # Clean up the pending request regardless of outcome
+        if chat_id in _pending_requests:
+            del _pending_requests[chat_id]
+
+@main_bot.on_message(filters.private & filters.user(config.TELEGRAM_ADMIN_IDS) & filters.text)
+async def _handle_all_messages(client: Client, message: Message):
+    """
+    This handler listens for all private text messages from authorized users.
+    If a pending 'ask' request exists for this chat, it fulfills it.
+    """
+    chat_id = message.chat.id
+    if chat_id in _pending_requests:
+        queue, event, msg_filters = _pending_requests[chat_id]
+
+        # Check if the message matches the expected filters
+        # Note: This is a simplified filter check. Pyrogram's internal filters are more robust.
+        # For 'filters.text', this check is usually redundant if the main handler already uses filters.text.
+        # If more complex filters (e.g., filters.photo) were needed for 'ask', this would need expansion.
+        if msg_filters is None or msg_filters(None, message): # Simplistic filter check
+            await queue.put(message)
+            event.set() # Signal that a response has been received
+        else:
+            # If the message doesn't match the expected filter, ignore it for the 'ask' context
+            logger.debug(f"Message from {chat_id} did not match pending ask filter. Ignoring for ask context.")
+    # If no pending request, let other handlers process the message normally.
+# --- End Manual 'ask' implementation setup ---
+
 
 @main_bot.on_message(
     filters.command(["start", "help"])
@@ -62,25 +112,25 @@ async def set_folder_handler(client: Client, message: Message):
     Handles the /set_folder command.
     Prompts the user for a folder name, searches for it, and presents a list
     of found folders for selection via inline buttons.
-    Uses client.ask() for compatibility with older Pyrogram versions.
+    Uses the manual_ask() function.
     """
     global SET_FOLDER_PATH_CACHE, DRIVE_DATA
 
     while True:
         try:
-            # --- MODIFICATION HERE: Using client.ask() instead of message.ask() ---
-            folder_name_input = await client.ask(
-                chat_id=message.chat.id, # Specify the chat ID
+            # --- MODIFICATION HERE: Using manual_ask() ---
+            folder_name_input = await manual_ask(
+                client=client,
+                chat_id=message.chat.id,
                 text="Send the folder name where you want to upload files\n\n/cancel to cancel",
-                timeout=60, # Timeout for user response
-                filters=filters.text,
+                timeout=60,
+                filters=filters.text, # Pass filters to manual_ask if needed, though handled generically in _handle_all_messages
             )
             # --- END MODIFICATION ---
         except asyncio.TimeoutError:
             await message.reply_text("Timeout\n\nUse /set_folder to set folder again")
             return
 
-        # Check if the user wants to cancel
         if folder_name_input.text.lower() == "/cancel":
             await message.reply_text("Cancelled")
             return
