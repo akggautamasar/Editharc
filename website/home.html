@@ -17,9 +17,16 @@
 </head>
 
 <body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <svg viewBox="0 0 24 24">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+    </button>
+
     <div class="container">
         <!-- Sidebar Start -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" />
                 <span>AirDrive</span>
@@ -82,7 +89,7 @@
 
         <!-- Remote Upload Start -->
         <div id="new-url-upload" class="create-new-folder">
-            <span>Url Upload</span>
+            <span>URL Upload</span>
             <input type="text" id="remote-url" placeholder="Enter Direct Download Link Of File" autocomplete="off" />
             <div id="single-threaded-div">
                 <input type="checkbox" name="single-threaded-toggle" id="single-threaded-toggle">
@@ -99,7 +106,7 @@
         <!-- Get Password Start -->
         <div id="get-password" class="create-new-folder">
             <span>Admin Login</span>
-            <input type="text" id="auth-pass" placeholder="Enter Password" autocomplete="off" />
+            <input type="password" id="auth-pass" placeholder="Enter Password" autocomplete="off" />
             <div>
                 <button id="pass-login">Login</button>
             </div>
@@ -109,10 +116,10 @@
         <!-- File Uploader Start -->
         <div id="file-uploader" class="file-uploader">
             <span class="upload-head">🚀 Uploading File...</span>
-            <span id="upload-filename" class="upload-info">Filename : </span>
-            <span id="upload-filesize" class="upload-info">Filesize :</span>
-            <span id="upload-status" class="upload-info">Status : </span>
-            <span id="upload-percent" class="upload-info">Progress : </span>
+            <span id="upload-filename" class="upload-info">Filename: </span>
+            <span id="upload-filesize" class="upload-info">Filesize: </span>
+            <span id="upload-status" class="upload-info">Status: </span>
+            <span id="upload-percent" class="upload-info">Progress: </span>
             <div class="progress">
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
@@ -130,29 +137,33 @@
                     <form id="search-form">
                         <input id="file-search" type="text" placeholder="Search in Drive" autocomplete="off" />
                     </form>
-
                 </div>
             </div>
 
             <div class="directory">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>File Size</th>
-                            <th>More</th>
-                        </tr>
-                    </thead>
-                    <tbody id="directory-data"></tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>File Size</th>
+                                <th>More</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directory-data"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
+        <!-- Main Content End -->
     </div>
+
     <script src="static/js/extra.js"></script>
     <script src="static/js/apiHandler.js"></script>
     <script src="static/js/sidebar.js"></script>
     <script src="static/js/fileClickHandler.js"></script>
     <script src="static/js/main.js"></script>
+    <script src="static/js/mobile.js"></script>
 </body>
 
 </html>
