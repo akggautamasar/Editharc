@@ -9,49 +9,200 @@
     <link href="//vjs.zencdn.net/8.3.0/video-js.min.css" rel="stylesheet">
     <script src="//vjs.zencdn.net/8.3.0/video.min.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: #f1f1f1;
+            padding: 20px;
         }
 
         .video-container {
-            width: 90%;
-            max-width: 800px;
+            width: 100%;
+            max-width: 1200px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-js {
+            width: 100% !important;
+            height: auto !important;
         }
 
         .buttons-container {
             margin-top: 20px;
             display: flex;
-            justify-content: space-evenly;
-            width: 90%;
-            max-width: 800px;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 1200px;
+            flex-wrap: wrap;
         }
 
         .copy-button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             cursor: pointer;
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            min-width: 160px;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
         }
 
         .copy-button:hover {
             background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+        }
+
+        .copy-button:active {
+            transform: translateY(0);
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .video-container {
+                border-radius: 8px;
+            }
+
+            .buttons-container {
+                margin-top: 15px;
+                gap: 10px;
+            }
+
+            .copy-button {
+                padding: 10px 20px;
+                font-size: 14px;
+                min-width: 140px;
+                flex: 1;
+                max-width: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+
+            .buttons-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .copy-button {
+                width: 100%;
+                max-width: 280px;
+                margin-bottom: 8px;
+            }
+        }
+
+        /* Landscape mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            body {
+                padding: 10px;
+                min-height: 100vh;
+            }
+
+            .video-container {
+                max-height: 70vh;
+            }
+
+            .buttons-container {
+                margin-top: 10px;
+            }
+        }
+
+        /* Video.js responsive adjustments */
+        @media (max-width: 768px) {
+            .video-js .vjs-control-bar {
+                font-size: 14px;
+            }
+
+            .video-js .vjs-button {
+                padding: 0 8px;
+            }
+        }
+
+        /* Loading state */
+        .video-container.loading {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Error state */
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            padding: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            margin: 20px 0;
+            max-width: 600px;
+        }
+
+        /* Success message for copy actions */
+        .success-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .success-message.show {
+            transform: translateX(0);
+        }
+
+        @media (max-width: 480px) {
+            .success-message {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 
 <body>
-
-    <div class="video-container">
+    <div class="video-container" id="video-container">
         <video id="my-player" class="video-js vjs-fluid" controls preload="auto" data-setup='{}'>
             <source id="video-src" src="" type="video/mp4">
             </source>
@@ -72,13 +223,67 @@
 
     <script>
         const downloadUrl = (new URL(window.location.href)).searchParams.get('url');
-        document.getElementById('video-src').src = downloadUrl;
+        const videoContainer = document.getElementById('video-container');
+        const videoSrc = document.getElementById('video-src');
+        
+        if (downloadUrl) {
+            videoSrc.src = downloadUrl;
+            
+            // Add loading state
+            videoContainer.classList.add('loading');
+            
+            // Remove loading state when video loads
+            const video = document.getElementById('my-player');
+            video.addEventListener('loadeddata', function() {
+                videoContainer.classList.remove('loading');
+            });
+            
+            // Handle video errors
+            video.addEventListener('error', function() {
+                videoContainer.classList.remove('loading');
+                showError('Failed to load video. Please check the URL and try again.');
+            });
+        } else {
+            showError('No video URL provided.');
+        }
 
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            videoContainer.parentNode.insertBefore(errorDiv, videoContainer.nextSibling);
+        }
+
+        function showSuccessMessage(message) {
+            // Remove existing success message
+            const existingMessage = document.querySelector('.success-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+
+            // Show the message
+            setTimeout(() => {
+                successDiv.classList.add('show');
+            }, 100);
+
+            // Hide the message after 3 seconds
+            setTimeout(() => {
+                successDiv.classList.remove('show');
+                setTimeout(() => {
+                    successDiv.remove();
+                }, 300);
+            }, 3000);
+        }
 
         function copyTextToClipboard(text) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function () {
-                    alert('Link copied to clipboard!');
+                    showSuccessMessage('Link copied to clipboard!');
                 }).catch(function (err) {
                     console.error('Could not copy text: ', err);
                     fallbackCopyTextToClipboard(text);
@@ -91,6 +296,9 @@
         function fallbackCopyTextToClipboard(text) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
@@ -98,12 +306,13 @@
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
-                    alert('Link copied to clipboard!');
+                    showSuccessMessage('Link copied to clipboard!');
                 } else {
                     alert('Failed to copy the link.');
                 }
             } catch (err) {
                 console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy the link.');
             }
 
             document.body.removeChild(textArea);
@@ -114,10 +323,38 @@
         }
 
         function copyDownloadUrl() {
-            copyTextToClipboard(downloadUrl);
+            if (downloadUrl) {
+                copyTextToClipboard(downloadUrl);
+            } else {
+                alert('No download URL available.');
+            }
         }
-    </script>
 
+        // Handle orientation changes on mobile
+        window.addEventListener('orientationchange', function() {
+            setTimeout(function() {
+                if (videojs && videojs.getPlayer('my-player')) {
+                    videojs.getPlayer('my-player').trigger('resize');
+                }
+            }, 500);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'c':
+                        e.preventDefault();
+                        copyStreamUrl();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        copyDownloadUrl();
+                        break;
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>
