@@ -3,30 +3,35 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AirDrive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>AirDrive - Cloud Storage</title>
+    <meta name="description" content="Store, access, and manage your files in the cloud with AirDrive">
     <link rel="stylesheet" href="static/home.css" />
-
-    <!-- Fonts Start -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
-        rel="stylesheet" />
-    <!-- Fonts End -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="static/assets/favicon.ico" type="image/x-icon">
+    <meta name="theme-color" content="#4a6cf7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
 <body>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    
     <div class="container">
-        <!-- Sidebar Start -->
-        <div class="sidebar">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" />
+                <img src="static/assets/logo.svg" alt="AirDrive Logo" />
                 <span>AirDrive</span>
             </div>
 
-            <button id="new-button" class="new-button">
-                <img src="static/assets/plus-icon.svg" />New
+            <button id="new-button" class="new-button" aria-label="Create new">
+                <i class="fas fa-plus"></i> New
             </button>
 
             <div id="new-upload" class="new-upload">
@@ -50,8 +55,30 @@
             </div>
 
             <div class="sidebar-menu">
-                <a class="selected-item" href="/?path=/"><img src="static/assets/home-icon.svg" />Home</a>
-                <a class="unselected-item" href="/?path=/trash"><img src="static/assets/trash-icon.svg" />Trash</a>
+                <a class="selected-item" href="/?path=/" aria-current="page">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a class="unselected-item" href="/?path=/trash">
+                    <i class="fas fa-trash"></i> Trash
+                </a>
+                <a class="unselected-item" href="#" id="settingsBtn">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="storage-info">
+                    <div class="storage-header">
+                        <span>Storage</span>
+                        <span id="storage-percentage">25% used</span>
+                    </div>
+                    <div class="storage-bar">
+                        <div class="storage-progress" style="width: 25%;"></div>
+                    </div>
+                    <div class="storage-details">
+                        <span>5 GB of 20 GB used</span>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- Sidebar End -->
@@ -126,33 +153,131 @@
         <div class="main-content">
             <div class="header">
                 <div class="search-bar">
-                    <img src="static/assets/search-icon.svg" />
-                    <form id="search-form">
-                        <input id="file-search" type="text" placeholder="Search in Drive" autocomplete="off" />
-                    </form>
-
-                </div>
+                <i class="fas fa-search search-icon"></i>
+                <form id="search-form" role="search">
+                    <input 
+                        id="file-search" 
+                        type="search" 
+                        placeholder="Search in Drive" 
+                        autocomplete="off" 
+                        aria-label="Search files and folders"
+                    />
+                </form>
+                <button class="search-filter-btn" aria-label="Search filters">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+            </div>
             </div>
 
-            <div class="directory">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>File Size</th>
-                            <th>More</th>
-                        </tr>
-                    </thead>
-                    <tbody id="directory-data"></tbody>
-                </table>
+            <div class="directory-container">
+                <div class="directory-actions">
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" aria-label="Grid view">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button class="view-btn" data-view="list" aria-label="List view">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                    <div class="sort-options">
+                        <span>Sort by:</span>
+                        <select id="sort-select" class="sort-select">
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="date-desc">Date (Newest first)</option>
+                            <option value="date-asc">Date (Oldest first)</option>
+                            <option value="size-asc">Size (Smallest first)</option>
+                            <option value="size-desc">Size (Largest first)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="directory" id="directory-view">
+                    <!-- Grid View (default) -->
+                    <div class="grid-view" id="grid-view">
+                        <!-- Items will be populated by JavaScript -->
+                    </div>
+                    
+                    <!-- List View (hidden by default) -->
+                    <div class="list-view" id="list-view" style="display: none;">
+                        <div class="list-header">
+                            <div class="list-col name">Name</div>
+                            <div class="list-col modified">Modified</div>
+                            <div class="list-col size">Size</div>
+                            <div class="list-col actions"></div>
+                        </div>
+                        <div class="list-items" id="list-items">
+                            <!-- Items will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div class="empty-state" id="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Your Drive is empty</h3>
+                        <p>Drag and drop files here or click 'New' to upload</p>
+                        <button id="upload-empty-btn" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload Files
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    <!-- Loading Indicator -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scripts -->
     <script src="static/js/extra.js"></script>
     <script src="static/js/apiHandler.js"></script>
     <script src="static/js/sidebar.js"></script>
     <script src="static/js/fileClickHandler.js"></script>
     <script src="static/js/main.js"></script>
+    
+    <!-- Initialize the app -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize mobile menu toggle
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (mobileMenuBtn && sidebar) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    document.body.classList.toggle('menu-open');
+                });
+            }
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768 && 
+                    !sidebar.contains(e.target) && 
+                    e.target !== mobileMenuBtn && 
+                    !mobileMenuBtn.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    document.body.classList.remove('menu-open');
+                }
+            });
+            
+            // Show loading overlay initially
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                // Simulate loading (replace with actual loading logic)
+                setTimeout(() => {
+                    loadingOverlay.style.opacity = '0';
+                    loadingOverlay.style.visibility = 'hidden';
+                }, 1000);
+            }
+        });
+    </script>
 </body>
 
 </html>
